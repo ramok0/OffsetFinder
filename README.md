@@ -20,7 +20,7 @@ A tool made to find offsets in UE 4.25-4.27 games
 - Fortnite 16.00 (UE 4.26) (didnt work at all because of string obfuscation)
 
 ## Example
-<img src="https://media.discordapp.net/attachments/1040696542358683671/1040696552869597204/image.png" alt="output" width="200"/>
+<img src="https://media.discordapp.net/attachments/1040696542358683671/1040696552869597204/image.png" alt="output" width="400"/>
 
 ## Dependencies
 - [spdlog](https://github.com/gabime/spdlog)
