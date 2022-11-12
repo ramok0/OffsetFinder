@@ -1,0 +1,15 @@
+## THIS DUMP MAY BE PARTIALLY UNACCURATE.
+
+Dumped at :  2022-11-13 00:33:30
+Offset dump for RogueCompany
+
+
+
+FEngineLoop::Tick : 0x0
+GWorld : 0x7ff69b8cbf28
+GEngine : 0x70c7718
+FNamePool::FNamePool : 0x2a3f810
+FNamePool : 0x6f5bc80
+TUObjectArray : 0x6f87ee8
+FMemory::Free : 0x0
+UObject::ProcessEvent : 0x2c2f310

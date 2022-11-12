@@ -1,0 +1,15 @@
+## THIS DUMP MAY BE PARTIALLY UNACCURATE.
+
+Dumped at :  2022-11-12 16:53:40
+Offset dump for Dauntless-Win64-Shipping
+
+
+
+FEngineLoop::Tick : 0x0
+GWorld : 0x0
+GEngine : 0x6cfd260
+FNamePool::FNamePool : 0x24a1a60
+FNamePool : 0x4df3d40
+TUObjectArray : 0x6b8f900
+FMemory::Free : 0x0
+UObject::ProcessEvent : 0x26aae60

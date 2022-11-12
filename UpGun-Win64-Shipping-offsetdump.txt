@@ -1,0 +1,15 @@
+## THIS DUMP MAY BE PARTIALLY UNACCURATE.
+
+Dumped at :  2022-11-12 16:28:10
+Offset dump for UpGun-Win64-Shipping
+
+
+
+FEngineLoop::Tick : 0x0
+GWorld : 0x0
+GEngine : 0x45d6280
+FNamePool::FNamePool : 0xed4960
+FNamePool : 0x4488040
+TUObjectArray : 0x44a05d8
+FMemory::Free : 0x0
+UObject::ProcessEvent : 0x10af160

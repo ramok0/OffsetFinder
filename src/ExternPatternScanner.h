@@ -120,13 +120,17 @@ public:
 	}
 
 	uintptr_t GetAbsoluteAddress(uintptr_t pInstruction, unsigned int instruction_size) {
-		if (!this->proc) return 0;
-		uint32_t offset = 0;
-		if (!this->proc->Read(pInstruction + (instruction_size - 4), sizeof(uint32_t), &offset)) {
-			spdlog::critical("Failed to read relative offset");
-			return 0;
-		}
-		return pInstruction + offset + instruction_size;
+	
+		cached_pe pe = this->getPESection(".text");
+		std::uint8_t* Image = pe.second;
+		auto offset = pInstruction - pe.first.BaseAddress + (instruction_size - 4);
+
+		int relativeOffset = static_cast<int>(static_cast<unsigned char>(Image[offset + 3]) << 24 |
+			static_cast<unsigned char>(Image[offset + 2]) << 16 |
+			static_cast<unsigned char>(Image[offset + 1]) << 8 |
+			static_cast<unsigned char>(Image[offset + 0]));
+
+		return pInstruction + relativeOffset + instruction_size;
 	}
 
 	uintptr_t FindPattern(std::uint8_t* Image, uintptr_t base, size_t size, std::vector<int> pattern, unsigned long long skipBytes = 0)
@@ -196,6 +200,26 @@ public:
 		}
 
 		return 0;
+	}
+
+	void ForEachPattern(const char* sectionName, const char* pattern, std::function<void(uintptr_t)> Action) {
+		std::vector<int> bytesPattern = this->patternToBytes(pattern);
+		cached_pe section = this->getPESection(sectionName);
+		std::uint8_t* scanBytes = section.second;
+		DWORD size = section.first.sizeOfSection;
+
+		size_t scanSize = size - bytesPattern.size();
+		for (unsigned long i = 0ul; i < scanSize; i++) {
+			bool found = true;
+			for (int k = 0; k < bytesPattern.size() && found; k++) {
+				if (bytesPattern[k] != 0xFF)
+					found = scanBytes[i + k] == (std::uint8_t)bytesPattern[k];
+			}
+
+			if (found) {
+				Action(section.first.BaseAddress + i);
+			}
+		}
 	}
 
 	uintptr_t FindPatternEx(const char* sectionName, const char* pattern, int skipBytes = 0, bool bRelative = false, int instruction_size = 0) {

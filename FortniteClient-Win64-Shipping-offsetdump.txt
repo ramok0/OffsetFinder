@@ -1,0 +1,15 @@
+## THIS DUMP MAY BE PARTIALLY UNACCURATE.
+
+Dumped at :  2022-11-11 20:25:17
+Offset dump for FortniteClient-Win64-Shipping
+
+
+
+FEngineLoop::Tick : 0xdb83f4
+GWorld : 0x940e698
+GEngine : 0x0
+FNamePool::FNamePool : 0x0
+FNamePool : 0x0
+TUObjectArray : 0x0
+FMemory::Free : 0x4000a
+UObject::ProcessEvent : 0x0

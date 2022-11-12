@@ -3,17 +3,44 @@
 uintptr_t Finder::EngineTick()
 {
 	uintptr_t stringOffset = scanner->FindPattern(".rdata", scanner->createStringPattern("r.OneFrameThreadLag", true));
-	uintptr_t stringRef =scanner->FindPatternWithPredicate(".text", "48 8D 15 ?? ?? ?? ?? 41 ?? ??", [stringOffset](uintptr_t instructionAddress) {
+	if (!stringOffset) return EngineTick2();
+	uintptr_t stringRef =scanner->FindPatternWithPredicate(".text", "48 8D ?? ?? ?? ??", [stringOffset](uintptr_t instructionAddress) {
 		return scanner->GetAbsoluteAddress(instructionAddress, 7) == stringOffset;
 	});
 
-	//48 89 ?? ?? ?? 55 53 56 57
+	if (!stringRef) return 0;
 
-	spdlog::debug("engine tick string ref ptr : {0:d}", stringRef);
-
+	spdlog::debug("engine tick string ref (r.OneFrameThreadLag) ptr : 0x{0:x}", stringRef);
+														    //41 54 41 55 41 56 41 57
 	uintptr_t pasLoin = scanner->ReverseFindPattern(".text", "41 54 41 55 41 56 41 57", stringRef, 0x2500);
+	if (!pasLoin) {
+		return EngineTick2();
+	}
+
 	uintptr_t result = scanner->getStartOfFunction(pasLoin);
 //spdlog::debug("Engine Tick Ptr : 0x{0:x}", result);
+	spdlog::info("Engine Tick Offset : 0x{0:x}", result);
+	return result;
+}
+
+uintptr_t Finder::EngineTick2()
+{
+	uintptr_t stringOffset = scanner->FindPattern(".rdata", scanner->createStringPattern("STAT_FEngineLoop_Tick_SlateInput", true));
+	if (!stringOffset) return 0;
+	
+	uintptr_t stringRef = scanner->FindPatternWithPredicate(".text", "48 8D ?? ?? ?? ??", [stringOffset](uintptr_t instructionAddress) {
+		return scanner->GetAbsoluteAddress(instructionAddress, 7) == stringOffset;
+	});
+
+	if (!stringRef) return 0;
+
+	spdlog::debug("engine tick string ref (STAT_FEngineLoop_Tick_SlateInput) ptr : 0x{0:x}", stringRef);
+	uintptr_t pasLoin = scanner->ReverseFindPattern(".text", "41 54 41 55 41 56 41 57", stringRef, 0x2500);
+	if (!pasLoin) {
+		return 0;
+	}
+	
+	uintptr_t result = scanner->getStartOfFunction(pasLoin);
 	spdlog::info("Engine Tick Offset : 0x{0:x}", result);
 	return result;
 }
@@ -21,8 +48,32 @@ uintptr_t Finder::EngineTick()
 uintptr_t Finder::Engine()
 {
 	uintptr_t Engine = scanner->FindPatternEx(".text", "41 B8 01 00 00 00 ?? ?? ?? 48 8B 0D ?? ?? ?? ?? E8 ?? ?? ?? ?? 48 85 C0", 9, true, 7);
+	if (!Engine) return 0; //Todo find with UnrealEd string
 	spdlog::info("Engine Offset : 0x{0:x}", Engine - scanner->getBaseAddress());
 	return Engine - scanner->getBaseAddress();
+}
+
+uintptr_t Finder::World2()
+{
+	//r.OneFrameThreadLag
+	uintptr_t stringOffset = scanner->FindPattern(".rdata", scanner->createStringPattern("r.OneFrameThreadLag", true));
+	if (!stringOffset) return 0;
+
+	uintptr_t stringRef = scanner->FindPatternWithPredicate(".text", "48 8D ?? ?? ?? ??", [stringOffset](uintptr_t instructionAddress) {
+		return scanner->GetAbsoluteAddress(instructionAddress, 7) == stringOffset;
+		});
+
+	scanner->ForEachPattern(".text", "48 8D ?? ?? ?? ??", [stringOffset](uintptr_t instructionAddress) {
+		if (scanner->GetAbsoluteAddress(instructionAddress, 7) == stringOffset) {
+			scanner->ForEachPattern(".text", "74 ? 48 8B 1D ? ? ? ?", [instructionAddress](uintptr_t maybeRelativeWorld) {
+				if (abs((long)(maybeRelativeWorld - instructionAddress)) < 3000) {
+					uintptr_t world = scanner->GetAbsoluteAddress(maybeRelativeWorld + 2, 7);
+					spdlog::info("World Offset : 0x{0:x}", world - scanner->getBaseAddress());
+					return world;
+				}
+			});
+		}
+	});
 }
 
 uintptr_t Finder::World(uintptr_t EngineTick)
@@ -31,8 +82,7 @@ uintptr_t Finder::World(uintptr_t EngineTick)
 	cached_pe section = scanner->getPESection(".text");
 	uintptr_t WorldRelative = scanner->FindPattern(section.second, section.first.VirtualAddress, 0x1000, scanner->patternToBytes("74 ? 48 8B 1D ? ? ? ?"), EngineTick-section.first.VirtualAddress);
 	spdlog::info("WorldRelative Offset (+2 RVA 7) : 0x{0:x}", WorldRelative);
-	//uint32_t offset = scanner->getProcess()->Read<uint32_t>(scanner->getBaseAddress()+ WorldRelative + 5);
-	//printf("offset : %d\n", offset);
+
 	uintptr_t World = scanner->GetAbsoluteAddress(scanner->getBaseAddress() + WorldRelative+2, 7);
 	if (World) {
 		spdlog::info("World Offset : 0x{0:x}", World - scanner->getBaseAddress());
@@ -50,6 +100,9 @@ uintptr_t Finder::FNamePoolFunction()
 		spdlog::critical("Failed to find 'DuplicatedHardcodedName' ptr");
 		return 0;
 	}
+
+	if (!stringOffset) return 0;
+
 	uintptr_t stringRef = scanner->FindPatternWithPredicate(".text", "4C 8D 0D ? ? ? ? 4C", [stringOffset](uintptr_t instructionAddress) {
 		return scanner->GetAbsoluteAddress(instructionAddress, 7) == stringOffset;
 		});
@@ -57,10 +110,16 @@ uintptr_t Finder::FNamePoolFunction()
 		spdlog::critical("Failed to find 'DuplicatedHardcodedName' reference");
 		return 0;
 	}
+	else {
+		spdlog::debug("'DuplicatedHardcodedName' string reference: 0x{0:x}", stringRef);
+	}
 
 	spdlog::debug("FNamePool 'DuplicateHardcodedName' ref : {0:x}", stringRef - scanner->getBaseAddress());
 
 	uintptr_t FNamePoolFunction = scanner->ReverseFindPattern(".text", "40 55 53 56 57", stringRef, 0x4000);
+	if (!FNamePoolFunction) {
+		return 0;
+	}
 	spdlog::info("FNamePool::FNamePool Offset : 0x{0:x}", FNamePoolFunction - scanner->getBaseAddress());
 	return FNamePoolFunction - scanner->getBaseAddress();
 }
@@ -127,6 +186,10 @@ uintptr_t Finder::FMemoryFree(uintptr_t EngineTick)
 
 	cached_pe section = scanner->getPESection(".text");
 	uintptr_t FreeRelative = scanner->FindPattern(section.second, section.first.VirtualAddress, 0x3000, scanner->patternToBytes("74 ?? 48 8B C8 E8 ?? ?? ?? ??"), EngineTick - section.first.VirtualAddress);
+	if (!FreeRelative) {
+		spdlog::critical("Failed to read FMemory::Free");
+		return 0;
+	}
 	spdlog::info("FreeRelative Offset (+5 RVA 5) : 0x{0:x}", FreeRelative);
 	uintptr_t FreeOffset = scanner->GetAbsoluteAddress(scanner->getBaseAddress() + FreeRelative + 5, 5);
 	if (!FreeOffset) {
